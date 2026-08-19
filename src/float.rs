@@ -969,10 +969,10 @@ pub trait Float: Num + Copy + NumCast + PartialOrd + Neg<Output = Self> {
     /// Returns `-0.0`.
     ///
     /// ```
-    /// use num_traits::{Zero, Float};
+    /// use num_traits::{Float, PartialZero};
     ///
     /// let inf: f32 = Float::infinity();
-    /// let zero: f32 = Zero::zero();
+    /// let zero: f32 = f32::zero();
     /// let neg_zero: f32 = Float::neg_zero();
     ///
     /// assert_eq!(zero, neg_zero);

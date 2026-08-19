@@ -4,16 +4,13 @@ use core::ops::{Add, Mul};
 #[cfg(has_num_saturating)]
 use core::num::Saturating;
 
-/// Defines an additive identity element for `Self`.
+/// Defines a distinguished `0` value for `Self`.
 ///
-/// # Laws
-///
-/// ```text
-/// a + 0 = a       ∀ a ∈ Self
-/// 0 + a = a       ∀ a ∈ Self
-/// ```
-pub trait Zero: Sized + Add<Self, Output = Self> {
-    /// Returns the additive identity element of `Self`, `0`.
+/// This trait does not require [`Add`]. Types that also implement addition
+/// with `0` as an identity should implement [`Zero`].
+pub trait PartialZero: Sized {
+    /// Returns the distinguished `0` value of `Self`.
+    ///
     /// # Purity
     ///
     /// This function should return the same result at all times regardless of
@@ -22,14 +19,24 @@ pub trait Zero: Sized + Add<Self, Output = Self> {
     // This cannot be an associated constant, because of bignums.
     fn zero() -> Self;
 
-    /// Sets `self` to the additive identity element of `Self`, `0`.
+    /// Sets `self` to the distinguished `0` value of `Self`.
     fn set_zero(&mut self) {
-        *self = Zero::zero();
+        *self = PartialZero::zero();
     }
 
-    /// Returns `true` if `self` is equal to the additive identity.
+    /// Returns `true` if `self` is equal to the distinguished `0` value.
     fn is_zero(&self) -> bool;
 }
+
+/// Defines an additive identity element for `Self`.
+///
+/// # Laws
+///
+/// ```text
+/// a + 0 = a       ∀ a ∈ Self
+/// 0 + a = a       ∀ a ∈ Self
+/// ```
+pub trait Zero: PartialZero + Add<Self, Output = Self> {}
 
 /// Defines an associated constant representing the additive identity element
 /// for `Self`.
@@ -40,7 +47,7 @@ pub trait ConstZero: Zero {
 
 macro_rules! zero_impl {
     ($t:ty, $v:expr) => {
-        impl Zero for $t {
+        impl PartialZero for $t {
             #[inline]
             fn zero() -> $t {
                 $v
@@ -50,6 +57,8 @@ macro_rules! zero_impl {
                 *self == $v
             }
         }
+
+        impl Zero for $t {}
 
         impl ConstZero for $t {
             const ZERO: Self = $v;
@@ -74,10 +83,7 @@ zero_impl!(i128, 0);
 zero_impl!(f32, 0.0);
 zero_impl!(f64, 0.0);
 
-impl<T: Zero> Zero for Wrapping<T>
-where
-    Wrapping<T>: Add<Output = Wrapping<T>>,
-{
+impl<T: PartialZero> PartialZero for Wrapping<T> {
     fn is_zero(&self) -> bool {
         self.0.is_zero()
     }
@@ -91,6 +97,8 @@ where
     }
 }
 
+impl<T: Zero> Zero for Wrapping<T> where Wrapping<T>: Add<Output = Wrapping<T>> {}
+
 impl<T: ConstZero> ConstZero for Wrapping<T>
 where
     Wrapping<T>: Add<Output = Wrapping<T>>,
@@ -99,10 +107,7 @@ where
 }
 
 #[cfg(has_num_saturating)]
-impl<T: Zero> Zero for Saturating<T>
-where
-    Saturating<T>: Add<Output = Saturating<T>>,
-{
+impl<T: PartialZero> PartialZero for Saturating<T> {
     fn is_zero(&self) -> bool {
         self.0.is_zero()
     }
@@ -117,6 +122,9 @@ where
 }
 
 #[cfg(has_num_saturating)]
+impl<T: Zero> Zero for Saturating<T> where Saturating<T>: Add<Output = Saturating<T>> {}
+
+#[cfg(has_num_saturating)]
 impl<T: ConstZero> ConstZero for Saturating<T>
 where
     Saturating<T>: Add<Output = Saturating<T>>,
@@ -124,16 +132,12 @@ where
     const ZERO: Self = Saturating(T::ZERO);
 }
 
-/// Defines a multiplicative identity element for `Self`.
+/// Defines a distinguished `1` value for `Self`.
 ///
-/// # Laws
-///
-/// ```text
-/// a * 1 = a       ∀ a ∈ Self
-/// 1 * a = a       ∀ a ∈ Self
-/// ```
-pub trait One: Sized + Mul<Self, Output = Self> {
-    /// Returns the multiplicative identity element of `Self`, `1`.
+/// This trait does not require [`Mul`]. Types that also implement
+/// multiplication with `1` as an identity should implement [`One`].
+pub trait PartialOne: Sized {
+    /// Returns the distinguished `1` value of `Self`.
     ///
     /// # Purity
     ///
@@ -143,12 +147,12 @@ pub trait One: Sized + Mul<Self, Output = Self> {
     // This cannot be an associated constant, because of bignums.
     fn one() -> Self;
 
-    /// Sets `self` to the multiplicative identity element of `Self`, `1`.
+    /// Sets `self` to the distinguished `1` value of `Self`.
     fn set_one(&mut self) {
-        *self = One::one();
+        *self = PartialOne::one();
     }
 
-    /// Returns `true` if `self` is equal to the multiplicative identity.
+    /// Returns `true` if `self` is equal to the distinguished `1` value.
     ///
     /// For performance reasons, it's best to implement this manually.
     /// After a semver bump, this method will be required, and the
@@ -162,6 +166,16 @@ pub trait One: Sized + Mul<Self, Output = Self> {
     }
 }
 
+/// Defines a multiplicative identity element for `Self`.
+///
+/// # Laws
+///
+/// ```text
+/// a * 1 = a       ∀ a ∈ Self
+/// 1 * a = a       ∀ a ∈ Self
+/// ```
+pub trait One: PartialOne + Mul<Self, Output = Self> {}
+
 /// Defines an associated constant representing the multiplicative identity
 /// element for `Self`.
 pub trait ConstOne: One {
@@ -171,7 +185,7 @@ pub trait ConstOne: One {
 
 macro_rules! one_impl {
     ($t:ty, $v:expr) => {
-        impl One for $t {
+        impl PartialOne for $t {
             #[inline]
             fn one() -> $t {
                 $v
@@ -181,6 +195,8 @@ macro_rules! one_impl {
                 *self == $v
             }
         }
+
+        impl One for $t {}
 
         impl ConstOne for $t {
             const ONE: Self = $v;
@@ -205,10 +221,7 @@ one_impl!(i128, 1);
 one_impl!(f32, 1.0);
 one_impl!(f64, 1.0);
 
-impl<T: One> One for Wrapping<T>
-where
-    Wrapping<T>: Mul<Output = Wrapping<T>>,
-{
+impl<T: PartialOne> PartialOne for Wrapping<T> {
     fn set_one(&mut self) {
         self.0.set_one();
     }
@@ -218,6 +231,8 @@ where
     }
 }
 
+impl<T: One> One for Wrapping<T> where Wrapping<T>: Mul<Output = Wrapping<T>> {}
+
 impl<T: ConstOne> ConstOne for Wrapping<T>
 where
     Wrapping<T>: Mul<Output = Wrapping<T>>,
@@ -226,10 +241,7 @@ where
 }
 
 #[cfg(has_num_saturating)]
-impl<T: One> One for Saturating<T>
-where
-    Saturating<T>: Mul<Output = Saturating<T>>,
-{
+impl<T: PartialOne> PartialOne for Saturating<T> {
     fn set_one(&mut self) {
         self.0.set_one();
     }
@@ -238,6 +250,9 @@ where
         Saturating(T::one())
     }
 }
+
+#[cfg(has_num_saturating)]
+impl<T: One> One for Saturating<T> where Saturating<T>: Mul<Output = Saturating<T>> {}
 
 #[cfg(has_num_saturating)]
 impl<T: ConstOne> ConstOne for Saturating<T>
@@ -251,14 +266,14 @@ where
 
 /// Returns the additive identity, `0`.
 #[inline(always)]
-pub fn zero<T: Zero>() -> T {
-    Zero::zero()
+pub fn zero<T: PartialZero>() -> T {
+    PartialZero::zero()
 }
 
 /// Returns the multiplicative identity, `1`.
 #[inline(always)]
-pub fn one<T: One>() -> T {
-    One::one()
+pub fn one<T: PartialOne>() -> T {
+    PartialOne::one()
 }
 
 #[test]
